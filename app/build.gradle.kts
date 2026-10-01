@@ -10,8 +10,8 @@ android {
         applicationId = "com.absecuritas.realtimeinspector"
         minSdk = 23
         targetSdk = 36
-        versionCode = 15
-        versionName = "13.2"
+        versionCode = 16
+        versionName = "13.3"
     }
 
     buildTypes {
