@@ -93,6 +93,11 @@ class MainActivity : AppCompatActivity() {
         // Screen-QR detection thresholds (0-255 luminance around the QR code).
         private const val SCREEN_MIN_LUMA = 246.0
         private const val SCREEN_MAX_STD = 5.0
+        private const val SCREEN_WHITE_MIN = 215      // QR white level that looks like a lit screen
+        private const val SCREEN_SURROUND_RATIO = 0.35 // rest of the frame must be darker than this x QR white
+        // QR must be inside the scan box (+tolerance) and fill at least this part of it.
+        private const val SCAN_BOX_TOLERANCE = 0.08f
+        private const val SCAN_BOX_MIN_FILL = 0.30f
     }
 
     private val cameraPermission = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
@@ -382,6 +387,13 @@ class MainActivity : AppCompatActivity() {
                     .addOnSuccessListener(cameraExecutor) { barcodes ->
                         val barcode = barcodes.firstOrNull()
                         val raw = barcode?.rawValue?.trim().orEmpty()
+                        val imgW = if (rotation == 90 || rotation == 270) imageProxy.height else imageProxy.width
+                        val imgH = if (rotation == 90 || rotation == 270) imageProxy.width else imageProxy.height
+                        val qrBox = barcode?.boundingBox
+                        if (raw.startsWith("RTI-", true) && qrBox != null && !insideScanBox(qrBox, imgW, imgH)) {
+                            mainHandler.post { if (!alertShowing && !processing.get()) scanHint.text = "Place the QR fully INSIDE the scan box" }
+                            return@addOnSuccessListener
+                        }
                         if (raw.startsWith("RTI-", true) && processing.compareAndSet(false, true)) {
                             try {
                                 val frame = try { upright(imageProxy.toBitmap(), rotation) } catch (_: Exception) { null }
@@ -421,6 +433,49 @@ class MainActivity : AppCompatActivity() {
         }.start()
     }
 
+    // The white scan frame is 260dp, centred on the screen. The preview is fillCenter, so map it to image pixels.
+    private fun insideScanBox(box: Rect, imgW: Int, imgH: Int): Boolean {
+        val vw = previewView.width; val vh = previewView.height
+        if (vw <= 0 || vh <= 0 || imgW <= 0 || imgH <= 0) return true
+        val scale = maxOf(vw.toFloat() / imgW, vh.toFloat() / imgH)
+        val side = 260f * resources.displayMetrics.density / scale
+        val cx = imgW / 2f; val cy = imgH / 2f
+        val tol = side * SCAN_BOX_TOLERANCE
+        val l = cx - side / 2 - tol; val r = cx + side / 2 + tol
+        val t = cy - side / 2 - tol; val b = cy + side / 2 + tol
+        val inside = box.left >= l && box.right <= r && box.top >= t && box.bottom <= b
+        val bigEnough = box.width() >= side * SCAN_BOX_MIN_FILL
+        return inside && bigEnough
+    }
+
+    private fun luma(p: Int): Int = (0.299 * Color.red(p) + 0.587 * Color.green(p) + 0.114 * Color.blue(p)).toInt()
+
+    // A phone/monitor shows the QR as a light source: the QR white is very bright while the rest of the camera frame is much darker.
+    private fun emissiveScreen(bmp: Bitmap, box: Rect): Boolean {
+        val w = box.width()
+        if (w < 40) return false
+        val step = maxOf(4, minOf(bmp.width, bmp.height) / 60)
+        val ex = (w * 0.5f).toInt()
+        val outer = Rect(box.left - ex, box.top - ex, box.right + ex, box.bottom + ex)
+        val inner = ArrayList<Int>()
+        var oSum = 0.0; var oN = 0
+        var y = 0
+        while (y < bmp.height) {
+            var x = 0
+            while (x < bmp.width) {
+                val l = luma(bmp.getPixel(x, y))
+                if (box.contains(x, y)) inner.add(l) else if (!outer.contains(x, y)) { oSum += l; oN++ }
+                x += step
+            }
+            y += step
+        }
+        if (inner.size < 20 || oN < 50) return false
+        inner.sort()
+        val white = inner[(inner.size * 0.9).toInt().coerceAtMost(inner.size - 1)]
+        val surround = oSum / oN
+        return white >= SCREEN_WHITE_MIN && surround <= white * SCREEN_SURROUND_RATIO
+    }
+
     private fun upright(src: Bitmap, rotation: Int): Bitmap {
         if (rotation == 0) return src
         val m = Matrix().apply { postRotate(rotation.toFloat()) }
@@ -429,7 +484,9 @@ class MainActivity : AppCompatActivity() {
 
     // True when the area around the QR is perfectly white and uniform (typical of a QR image shown on a phone screen).
     // Thresholds are constants below; tune them after a field test if genuine paper QR codes get rejected.
-    private fun looksLikeScreenQr(bmp: Bitmap, box: Rect): Boolean {
+    private fun looksLikeScreenQr(bmp: Bitmap, box: Rect): Boolean = emissiveScreen(bmp, box) || quietZoneScreen(bmp, box)
+
+    private fun quietZoneScreen(bmp: Bitmap, box: Rect): Boolean {
         val w = box.width()
         if (w < 40) return false
         val pad = (w * 0.30f).toInt()
@@ -505,11 +562,18 @@ class MainActivity : AppCompatActivity() {
             saveToGallery(frame, result.uppercase(Locale.US), "$pointName | $result")
         }
         when {
-            httpCode in 200..299 && result.equals("ACCEPTED", true) -> showStatus("✓ ACCEPTED", true)
-            httpCode in 200..299 && result.equals("REPEAT", true) -> showStatus("REPEAT ${json.optInt("repeat_count", 0)} / 1", false)
+            httpCode in 200..299 && result.equals("ACCEPTED", true) -> {
+                showStatus("✓ ACCEPTED", true)
+                if (!json.optBoolean("inspection_complete", false))
+                    showScanPopup("✓ Scan Complete", "$pointName\n\nScan completed and server updated.", 2500L, ToneGenerator.TONE_PROP_ACK, 300)
+            }
+            httpCode in 200..299 && result.equals("REPEAT", true) -> {
+                showStatus("REPEAT ${json.optInt("repeat_count", 0)} / 1", false)
+                showScanPopup("⚠ REPEAT", "$pointName\n\nThis point is already scanned. Repeat recorded on server.", 0L, ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 700)
+            }
             httpCode in 200..299 && result.equals("REPEAT_ALERT", true) -> {
                 showStatus("⚠ REPEAT ALERT", false)
-                repeatAlert(json.optString("message", "This point has already been repeated once."))
+                showScanPopup("⚠ Repeat Alert", json.optString("message", "This point has already been repeated."), 0L, ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 1000)
             }
             httpCode == 401 -> { sessionExpired(); processing.set(false); return }
             httpCode == 429 -> { showStatus("TOO FAST — SCAN THE REAL QR AT THE POINT", false); beep(ToneGenerator.TONE_SUP_ERROR, 400) }
@@ -524,16 +588,19 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun repeatAlert(message: String) {
-        if (alertShowing) return
+    private fun showScanPopup(title: String, message: String, autoDismissMs: Long, tone: Int, toneMs: Int) {
+        if (alertShowing || isFinishing) return
         alertShowing = true
-        try { ToneGenerator(AudioManager.STREAM_NOTIFICATION, 100).startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 700) } catch (_: Exception) {}
-        AlertDialog.Builder(this)
-            .setTitle("Repeat Alert")
+        beep(tone, toneMs)
+        val dlg = AlertDialog.Builder(this)
+            .setTitle(title)
             .setMessage(message)
             .setCancelable(false)
-            .setPositiveButton("OK") { dialog, _ -> dialog.dismiss(); alertShowing = false; processing.set(false) }
-            .show()
+            .setPositiveButton("OK") { d, _ -> d.dismiss() }
+            .create()
+        dlg.setOnDismissListener { alertShowing = false; processing.set(false) }
+        dlg.show()
+        if (autoDismissMs > 0) mainHandler.postDelayed({ if (dlg.isShowing) dlg.dismiss() }, autoDismissMs)
     }
 
     private fun beep(tone: Int, ms: Int) {
