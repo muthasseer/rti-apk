@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent" android:background="@color/light_bg">
+
+    <androidx.camera.view.PreviewView
+        android:id="@+id/previewView" android:layout_width="match_parent" android:layout_height="match_parent"
+        android:visibility="gone" app:implementationMode="compatible" app:scaleType="fillCenter" />
+
+    <ScrollView android:layout_width="match_parent" android:layout_height="match_parent">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="20dp" android:gravity="center_horizontal">
+            <ImageView
+                android:id="@+id/appLogo"
+                android:layout_width="118dp"
+                android:layout_height="118dp"
+                android:src="@drawable/app_logo"
+                android:contentDescription="@string/app_logo_description"
+                android:scaleType="fitCenter"
+                android:layout_marginBottom="10dp" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="AB SECURITAS" android:textColor="@color/navy" android:textSize="27sp" android:textStyle="bold" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="ELECTRONIC SECURITY DIVISION" android:textColor="@color/blue" android:textSize="13sp" android:textStyle="bold" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="REAL TIME INSPECTOR" android:textColor="@color/dark_text" android:textSize="15sp" android:textStyle="bold" android:layout_marginBottom="22dp" />
+
+            <LinearLayout android:id="@+id/loginPanel" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:background="#FFFFFFFF" android:padding="20dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Inspector Login" android:textColor="@color/dark_text" android:textSize="22sp" android:textStyle="bold" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Connect this device to your assigned company" android:textColor="#667085" android:layout_marginTop="5dp" android:layout_marginBottom="18dp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Device ID (Automatic / Non-editable)" android:textStyle="bold" android:textColor="@color/dark_text" />
+                <TextView android:id="@+id/deviceIdText" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Generating device ID..." android:textStyle="bold" android:textColor="@color/navy" android:background="#EEF2F6" android:padding="12dp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Inspector User ID" android:textStyle="bold" android:textColor="@color/dark_text" android:layout_marginTop="10dp" />
+                <EditText android:id="@+id/userIdInput" android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="text" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Password" android:textStyle="bold" android:textColor="@color/dark_text" android:layout_marginTop="10dp" />
+                <EditText android:id="@+id/passwordInput" android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="textPassword" />
+                <Button android:id="@+id/loginButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="LOGIN" android:layout_marginTop="16dp" />
+                <TextView android:id="@+id/loginStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="" android:layout_marginTop="10dp" />
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/startPanel" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:background="#FFFFFFFF" android:padding="20dp" android:visibility="gone">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Inspection Home" android:textSize="22sp" android:textStyle="bold" android:textColor="@color/dark_text" />
+                <TextView android:id="@+id/companyText" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Company" android:textSize="19sp" android:textStyle="bold" android:layout_marginTop="15dp" android:textColor="@color/navy" />
+                <TextView android:id="@+id/inspectorText" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Inspector" android:layout_marginTop="7dp" />
+                <TextView android:id="@+id/deviceText" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Device" android:layout_marginTop="4dp" />
+                <TextView android:id="@+id/locationSummary" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="TOTAL POINTS: 0 • SCANNED: 0 • PENDING: 0" android:textStyle="bold" android:layout_marginTop="20dp" android:textColor="@color/navy" />
+                <TextView android:id="@+id/locationDetails" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="" android:layout_marginTop="10dp" android:textColor="@color/dark_text" />
+                <TextView android:id="@+id/startStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="" android:layout_marginTop="12dp" android:textColor="#667085" />
+                <Button android:id="@+id/startInspectionButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="START INSPECTION" android:layout_marginTop="20dp" />
+                <Button android:id="@+id/switchInspectorButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="SWITCH INSPECTOR" android:layout_marginTop="8dp" />
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+
+    <FrameLayout android:id="@+id/inspectionPanel" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone" android:background="@android:color/transparent">
+        <View android:layout_width="match_parent" android:layout_height="110dp" android:background="#AA000000" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="18dp">
+            <TextView android:id="@+id/inspectorText2" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Inspector" android:textColor="#FFFFFF" android:textStyle="bold" android:textSize="16sp" />
+            <TextView android:id="@+id/scanHint" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Align the QR code inside the scan box" android:textColor="#FFFFFF" android:textStyle="bold" android:layout_marginTop="6dp" />
+            <TextView android:id="@+id/locationSummary2" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="TOTAL POINTS: 0 • SCANNED: 0 • PENDING: 0" android:textColor="#FFFFFF" android:textStyle="bold" android:layout_marginTop="8dp" />
+        </LinearLayout>
+
+        <View android:layout_width="260dp" android:layout_height="260dp" android:layout_gravity="center" android:background="@drawable/scan_frame" />
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_gravity="bottom" android:orientation="vertical" android:padding="18dp" android:background="#CC000000">
+            <TextView android:id="@+id/statusText" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="READY — SCAN QR" android:textColor="#FFFFFF" android:textStyle="bold" android:textSize="18sp" />
+            <TextView android:id="@+id/lastScan" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="No scan yet" android:textColor="#FFFFFF" android:textSize="15sp" android:textStyle="bold" android:layout_marginTop="8dp" />
+            <Button android:id="@+id/stopInspectionButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="END INSPECTION" android:layout_marginTop="12dp" />
+        </LinearLayout>
+    </FrameLayout>
+</FrameLayout>
